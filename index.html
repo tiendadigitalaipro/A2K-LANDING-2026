@@ -809,7 +809,80 @@
       outline: none;
       font-family: inherit;
     }
-    .chat-input-area input:focus {
+    
+    /* ============================================
+       CHAT BUTTONS & TYPING
+       ============================================ */
+    .chat-buttons {
+      padding: 0 14px 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chat-btn {
+      padding: 8px 14px;
+      border: 1px solid rgba(0, 180, 255, 0.25);
+      border-radius: 20px;
+      background: rgba(0, 180, 255, 0.06);
+      color: #C0C0C0;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      white-space: normal;
+      text-align: left;
+      line-height: 1.3;
+      font-family: inherit;
+    }
+    .chat-btn:hover {
+      background: rgba(0, 180, 255, 0.15);
+      border-color: #00B4FF;
+      color: #fff;
+    }
+    .chat-btn.primary {
+      background: linear-gradient(135deg, #00B4FF, #0088CC);
+      border-color: #00B4FF;
+      color: #fff;
+      font-weight: 600;
+    }
+    .chat-btn.primary:hover {
+      box-shadow: 0 4px 20px rgba(0, 180, 255, 0.3);
+    }
+    .chat-btn.secondary {
+      border-color: rgba(192, 192, 192, 0.15);
+      background: rgba(192, 192, 192, 0.04);
+    }
+    .chat-btn.secondary:hover {
+      border-color: rgba(192, 192, 192, 0.3);
+      color: #fff;
+    }
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 10px 16px;
+      margin-bottom: 8px;
+    }
+    .typing-indicator span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #00B4FF;
+      animation: typingBounce 1.4s ease-in-out infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-6px); opacity: 1; }
+    }
+    .chat-msg-fade {
+      animation: msgFadeIn 0.3s ease;
+    }
+    @keyframes msgFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+.chat-input-area input:focus {
       border-color: #00B4FF;
     }
     .chat-input-area button {
@@ -1240,23 +1313,19 @@
   <!-- ==========================================
        CHAT FLOTANTE
        ========================================== -->
-  <div class="chat-bubble" id="chatBubble">
+    <div class="chat-bubble" id="chatBubble">
     <div class="chat-popup" id="chatPopup">
       <div class="chat-header">
         <div class="avatar">🤖</div>
         <div>
           <div class="chat-title">A2K Assist</div>
-          <div class="chat-status">🟢 Online — respondemos al instante</div>
+          <div class="chat-status">🟢 Online</div>
         </div>
+        <button class="chat-header-close" id="chatHeaderClose" aria-label="Cerrar">✕</button>
       </div>
-      <div class="chat-messages" id="chatMessages">
-        <div class="chat-msg bot">
-          <div class="msg-content">
-            ¡Hola! 👋 Soy el asistente de A2K Digital Studio. ¿En qué puedo ayudarte hoy?
-          </div>
-        </div>
-      </div>
-      <div class="chat-input-area">
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-buttons" id="chatButtons"></div>
+      <div class="chat-input-area" id="chatInputArea">
         <input type="text" id="chatInput" placeholder="Escribe tu mensaje..." autocomplete="off">
         <button id="chatSendBtn" aria-label="Enviar">➤</button>
       </div>
@@ -1265,9 +1334,7 @@
       💬
       <span class="notification-dot"></span>
     </button>
-  </div>
-
-  <!-- ==========================================
+  </div><!-- ==========================================
        JAVASCRIPT
        ========================================== -->
   <script>
@@ -1475,64 +1542,302 @@
        CHAT BUBBLE
        ========================================== */
     (function initChat() {
+      // =============================================
+      // STATE MACHINE — Conversational Flow A2K
+      // =============================================
       const toggleBtn = document.getElementById('chatToggleBtn');
       const popup = document.getElementById('chatPopup');
       const input = document.getElementById('chatInput');
       const sendBtn = document.getElementById('chatSendBtn');
       const messages = document.getElementById('chatMessages');
+      const buttons = document.getElementById('chatButtons');
+      const inputArea = document.getElementById('chatInputArea');
+      const closeBtn = document.getElementById('chatHeaderClose');
       const dot = toggleBtn.querySelector('.notification-dot');
 
       let isOpen = false;
+      let state = 'idle';
+      let userData = {};
 
-      // Bot responses
-      const botResponses = [
-        '¡Gracias por escribirnos! 🚀 Un asesor te responderá en breve.',
-        'Excelente pregunta! ¿Te gustaría recibir información sobre nuestros planes?',
-        'Estamos aquí para ayudarte. ¿Qué servicio te interesa?',
-        '¡Claro! Déjanos tu correo y te enviamos un catálogo completo.',
-      ];
+      // =============================================
+      // STATE MACHINE DEFINITION — 14 states
+      // =============================================
+      const states = {
+        greeting: {
+          message: '¡Hola! 👋 Soy el asistente virtual de **A2K DIGITAL STUDIO 2026**.\n\nEstoy aquí para ayudarte a conocer nuestros servicios, agendar reuniones o conectarte con un asesor humano.\n\n¿En qué puedo ayudarte hoy? ✨',
+          buttons: [
+            { text: '🆕 Soy nuevo — quiero conocer A2K', action: 'new_client' },
+            { text: '🔄 Ya soy cliente', action: 'existing_client' }
+          ],
+          input: false
+        },
+        new_client: {
+          message: '¡Bienvenido a A2K! 🚀 Déjame mostrarte lo que hacemos:\n\n⚙️ **Automatizaciones Inteligentes** — bots, asistentes IA, flujos\n🎨 **Diseño Profesional** — landing pages, branding, video\n🛒 **E-commerce** — tiendas online, catálogos, pagos\n\n¿Qué te gustaría explorar?',
+          buttons: [
+            { text: '🤖 Automatizaciones', action: 'auto' },
+            { text: '🎨 Diseño Profesional', action: 'design' },
+            { text: '🛒 E-commerce', action: 'ecommerce' },
+            { text: '📅 Agendar reunión', action: 'schedule' },
+            { text: '👤 Hablar con humano', action: 'capture_name' }
+          ],
+          input: false
+        },
+        existing_client: {
+          message: '¡Qué bueno verte de nuevo! 🔥 ¿En qué proyecto estás trabajando o qué necesitas hoy?',
+          buttons: [
+            { text: '🤖 Automatizaciones', action: 'auto' },
+            { text: '🎨 Diseño Profesional', action: 'design' },
+            { text: '🛒 E-commerce', action: 'ecommerce' },
+            { text: '📅 Agendar reunión', action: 'schedule' },
+            { text: '👤 Hablar con humano', action: 'capture_name' }
+          ],
+          input: false
+        },
+        auto: {
+          message: '🤖 **Automatizaciones Inteligentes**\n\nTransformamos procesos en máquinas de ventas 24/7.\n\n**¿Qué incluye?**\n✦ Bots WhatsApp/Telegram con IA\n✦ Asistentes de voz VAPI\n✦ Flujos de venta automatizados\n✦ Recordatorios y seguimiento\n✦ Integración CRM + pagos\n\n**Caso real:** Clínica dental → +700% clientes\n\n**Inversión desde:** $97/mes',
+          buttons: [
+            { text: '📋 Quiero cotizar', action: 'capture_name', cls: 'primary' },
+            { text: '📅 Agendar demo', action: 'schedule' },
+            { text: '🔙 Volver al menú', action: 'menu_back' }
+          ],
+          input: false
+        },
+        design: {
+          message: '🎨 **Diseño Profesional**\n\nTu marca merece una primera impresión inolvidable.\n\n**¿Qué incluye?**\n✦ Landing pages conversoras\n✦ Branding completo\n✦ Edición de video profesional\n✦ Flyers y material digital\n✦ Identidad visual multicanal\n\n**Caso real:** +340% conversiones en 30 días\n\n**Inversión desde:** $197',
+          buttons: [
+            { text: '🖼️ Ver ejemplos', action: 'design_examples' },
+            { text: '📋 Quiero cotizar', action: 'capture_name', cls: 'primary' },
+            { text: '🔙 Volver al menú', action: 'menu_back' }
+          ],
+          input: false
+        },
+        design_examples: {
+          message: '🖼️ **Nuestros trabajos recientes:**\n\n1️⃣ **A2K Digital Studio** — Landing page futurista\n2️⃣ **ZYNC Electronics** — Tienda online\n3️⃣ **Barbería Pro** — Branding + Catálogo\n\nCada proyecto es único. ¿Te gustaría algo similar?',
+          buttons: [
+            { text: '📋 Quiero algo así', action: 'capture_name', cls: 'primary' },
+            { text: '🔙 Volver a servicios', action: 'menu_back' }
+          ],
+          input: false
+        },
+        ecommerce: {
+          message: '🛒 **E-commerce y Productos Digitales**\n\nTu tienda online lista para vender.\n\n**¿Qué incluye?**\n✦ Tienda online con catálogo\n✦ Carrito + pasarela de pago\n✦ Integración WhatsApp\n✦ Gestión de pedidos automática\n✦ Catálogo digital compartible\n\n**Caso real:** ZYNC Electronics — 50+ productos\n\n**Inversión desde:** $29/mes',
+          buttons: [
+            { text: '📋 Quiero cotizar', action: 'capture_name', cls: 'primary' },
+            { text: '📅 Agendar demo', action: 'schedule' },
+            { text: '🔙 Volver al menú', action: 'menu_back' }
+          ],
+          input: false
+        },
+        capture_name: {
+          message: '¡Excelente elección! 🚀 Para comenzar, ¿me podrías decir tu **nombre**?',
+          buttons: [],
+          input: true,
+          nextState: 'capture_email',
+          captureKey: 'name'
+        },
+        capture_email: {
+          message: 'Gracias, **{name}**. ¿Cuál es tu **correo electrónico**?',
+          buttons: [],
+          input: true,
+          nextState: 'capture_phone',
+          captureKey: 'email'
+        },
+        capture_phone: {
+          message: '¿Y un **número de contacto**? (opcional)',
+          buttons: [
+            { text: '⏭️ Omitir', action: 'skip_phone', cls: 'secondary' }
+          ],
+          input: true,
+          nextState: 'capture_message',
+          captureKey: 'phone',
+          allowSkip: true
+        },
+        capture_message: {
+          message: 'Cuéntanos brevemente: ¿qué **necesitas** o qué **proyecto** tienes en mente?',
+          buttons: [],
+          input: true,
+          nextState: 'capture_done',
+          captureKey: 'message'
+        },
+        capture_done: {
+          message: '✅ **¡Gracias, {name}!** Hemos recibido:\n\n👤 {name}\n✉️ {email}\n📱 {phone || "—"}\n📝 {message}\n\nUn asesor te contactará pronto. ¿Agendamos una reunión?',
+          buttons: [
+            { text: '📅 Sí, agendar reunión', action: 'schedule', cls: 'primary' },
+            { text: '✅ No, esperaré', action: 'farewell' }
+          ],
+          input: false
+        },
+        schedule: {
+          message: '📅 ¿Qué **día** te gustaría? (lun-vie)',
+          buttons: [],
+          input: true,
+          nextState: 'schedule_time',
+          captureKey: 'schedule_day'
+        },
+        schedule_time: {
+          message: '¿A qué **hora**? (9:00 AM - 6:00 PM VE)',
+          buttons: [
+            { text: '9:00 AM', action: 'time_9' },
+            { text: '10:00 AM', action: 'time_10' },
+            { text: '11:00 AM', action: 'time_11' },
+            { text: '2:00 PM', action: 'time_14' },
+            { text: '3:00 PM', action: 'time_15' },
+            { text: '4:00 PM', action: 'time_16' }
+          ],
+          input: false
+        },
+        schedule_confirm: {
+          message: '✅ **Resumen:**\n\n📅 {schedule_day}\n⏰ {schedule_time}\n👤 {name}\n✉️ {email}\n📱 {phone || "—"}\n📝 {message}\n\n¿Confirmamos?',
+          buttons: [
+            { text: '✅ Confirmar', action: 'farewell', cls: 'primary' },
+            { text: '🔄 Reagendar', action: 'schedule' },
+            { text: '❌ Cancelar', action: 'menu_back' }
+          ],
+          input: false
+        },
+        farewell: {
+          message: '✨ **¡Listo!** Gracias por contactar a **A2K DIGITAL STUDIO 2026**.\n\nUn asesor te contactará pronto.\n\nVisita nuestro portafolio:\n🌐 a2k-landing-2026.vercel.app\n\n¡Que tengas un excelente día! 🚀🔥',
+          buttons: [
+            { text: '🔄 Volver al inicio', action: 'reset' }
+          ],
+          input: false
+        }
+      };
+
+      // =============================================
+      // HELPERS
+      // =============================================
 
       function toggleChat() {
         isOpen = !isOpen;
         popup.classList.toggle('open', isOpen);
         if (isOpen) {
           dot.style.display = 'none';
-          input.focus();
+          if (state === 'idle') {
+            state = 'greeting';
+            renderState('greeting');
+          } else {
+            renderState(state);
+          }
+          setTimeout(function() { input.focus(); }, 300);
         }
       }
 
-      function addMessage(text, isUser = false) {
-        const div = document.createElement('div');
-        div.className = `chat-msg ${isUser ? 'user' : 'bot'}`;
-        div.innerHTML = `<div class="msg-content">${text}</div>`;
+      function addMessage(text, isUser, isTyping) {
+        if (isTyping) {
+          var div = document.createElement('div');
+          div.className = 'chat-msg bot chat-msg-fade';
+          div.id = 'typingIndicator';
+          div.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+          messages.appendChild(div);
+          messages.scrollTop = messages.scrollHeight;
+          return;
+        }
+        var typing = document.getElementById('typingIndicator');
+        if (typing) typing.remove();
+
+        var div = document.createElement('div');
+        div.className = 'chat-msg ' + (isUser ? 'user' : 'bot') + ' chat-msg-fade';
+        var formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+        div.innerHTML = '<div class="msg-content">' + formatted + '</div>';
         messages.appendChild(div);
         messages.scrollTop = messages.scrollHeight;
       }
 
-      function handleSend() {
-        const text = input.value.trim();
-        if (!text) return;
+      function renderButtons(btnList) {
+        buttons.innerHTML = '';
+        btnList.forEach(function(b) {
+          var btn = document.createElement('button');
+          btn.className = 'chat-btn' + (b.cls ? ' ' + b.cls : '');
+          btn.textContent = b.text;
+          btn.addEventListener('click', function() { handleAction(b.action); });
+          buttons.appendChild(btn);
+        });
+      }
 
+      function showInput(show) {
+        inputArea.style.display = show ? 'flex' : 'none';
+        if (show) {
+          input.value = '';
+          input.focus();
+          input.placeholder = 'Escribe tu respuesta...';
+        }
+      }
+
+      function interpolate(stateName) {
+        var msg = states[stateName].message;
+        msg = msg.replace(/\{(\w+)\}/g, function(m, k) {
+          return userData[k] !== undefined ? userData[k] : m;
+        });
+        msg = msg.replace(/\|\| "—"\}/g, '');
+        return msg;
+      }
+
+      function renderState(stateName, delay) {
+        if (delay === undefined) delay = 0;
+        var st = states[stateName];
+        if (!st) return;
+        state = stateName;
+        showInput(false);
+        buttons.innerHTML = '';
+
+        var showMsg = function() {
+          addMessage(interpolate(stateName), false, false);
+          if (st.buttons && st.buttons.length > 0) renderButtons(st.buttons);
+          if (st.input) showInput(true);
+        };
+
+        if (delay > 0) {
+          addMessage('', false, true);
+          setTimeout(showMsg, delay);
+        } else {
+          showMsg();
+        }
+      }
+
+      function handleAction(action) {
+        switch (action) {
+          case 'new_client': addMessage('🆕 Nuevo — conocer A2K', true); setTimeout(function() { renderState('new_client', 600); }, 400); break;
+          case 'existing_client': addMessage('🔄 Ya soy cliente', true); setTimeout(function() { renderState('existing_client', 600); }, 400); break;
+          case 'auto': addMessage('🤖 Automatizaciones', true); setTimeout(function() { renderState('auto', 600); }, 400); break;
+          case 'design': addMessage('🎨 Diseño', true); setTimeout(function() { renderState('design', 600); }, 400); break;
+          case 'design_examples': addMessage('🖼️ Ver ejemplos', true); setTimeout(function() { renderState('design_examples', 600); }, 400); break;
+          case 'ecommerce': addMessage('🛒 E-commerce', true); setTimeout(function() { renderState('ecommerce', 600); }, 400); break;
+          case 'schedule': addMessage('📅 Agendar', true); setTimeout(function() { renderState('schedule', 600); }, 400); break;
+          case 'capture_name': addMessage('👤 Hablar con humano', true); setTimeout(function() { renderState('capture_name', 600); }, 400); break;
+          case 'skip_phone': addMessage('⏭️ Omitir', true); userData.phone = ''; setTimeout(function() { renderState('capture_message', 600); }, 400); break;
+          case 'menu_back': addMessage('🔙 Volver', true); setTimeout(function() { renderState('new_client', 600); }, 400); break;
+          case 'farewell': addMessage('✅ Confirmar', true); setTimeout(function() { renderState('farewell', 700); }, 400); break;
+          case 'reset': userData = {}; setTimeout(function() { renderState('greeting', 600); }, 400); break;
+          case 'time_9': case 'time_10': case 'time_11': case 'time_14': case 'time_15': case 'time_16':
+            var tm = { time_9: '9:00 AM', time_10: '10:00 AM', time_11: '11:00 AM', time_14: '2:00 PM', time_15: '3:00 PM', time_16: '4:00 PM' };
+            var t = tm[action]; addMessage(t, true); userData.schedule_time = t;
+            if (!userData.name) userData.name = 'Cliente';
+            setTimeout(function() { renderState('schedule_confirm', 600); }, 400);
+            break;
+        }
+      }
+
+      function handleSend() {
+        var text = input.value.trim();
+        if (!text) return;
+        var st = states[state];
+        if (!st || !st.input || !st.captureKey) return;
         addMessage(text, true);
         input.value = '';
-
-        // Simulate typing delay
-        setTimeout(() => {
-          const reply = botResponses[Math.floor(Math.random() * botResponses.length)];
-          addMessage(reply);
-        }, 800 + Math.random() * 600);
+        userData[st.captureKey] = text;
+        if (st.nextState) setTimeout(function() { renderState(st.nextState, 600); }, 400);
       }
 
       toggleBtn.addEventListener('click', toggleChat);
-
+      if (closeBtn) closeBtn.addEventListener('click', function() { isOpen = false; popup.classList.remove('open'); });
       sendBtn.addEventListener('click', handleSend);
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') handleSend();
-      });
+      input.addEventListener('keydown', function(e) { if (e.key === 'Enter') handleSend(); });
+      document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && isOpen) { isOpen = false; popup.classList.remove('open'); } });
+      console.log('[A2K Chat] 14 states initialized');
     })();
 
-    /* ==========================================
-       CONTACT FORM — Simulate submit
+    CONTACT FORM — Simulate submit
        ========================================== */
     (function initContactForm() {
       const form = document.getElementById('contactForm');
