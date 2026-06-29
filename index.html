@@ -1572,7 +1572,7 @@
           input: false
         },
         new_client: {
-          message: '¡Bienvenido a A2K! 🚀 Déjame mostrarte lo que hacemos:\n\n⚙️ **Automatizaciones Inteligentes** — bots, asistentes IA, flujos\n🎨 **Diseño Profesional** — landing pages, branding, video\n🛒 **E-commerce** — tiendas online, catálogos, pagos\n\n¿Qué te gustaría explorar?',
+          message: '¡Bienvenido a A2K! 🚀 Déjame mostrarte lo que hacemos:\n\n⚙️ **Automatizaciones Inteligentes** — bots, asistentes IA, flujos\n🎨 **Diseño Profesional** — landing pages, branding, video\n🛒 **E-commerce** — tiendas online, catálogos, pagos\n\n¿Qué te gustaría explorar?\n\n💡 *También puedes escribir tu pregunta directa y DeepSeek IA te responderá.*',
           buttons: [
             { text: '🤖 Automatizaciones', action: 'auto' },
             { text: '🎨 Diseño Profesional', action: 'design' },
@@ -1695,6 +1695,14 @@
           ],
           input: false
         },
+        faq_result: {
+          message: '🤖 **DeepSeek IA:**\n\n{faq_response}',
+          buttons: [
+            { text: '❓ Otra pregunta', action: 'faq_ask_again' },
+            { text: '🔙 Volver al menú', action: 'menu_back' }
+          ],
+          input: false
+        },
         farewell: {
           message: '✨ **¡Listo!** Gracias por contactar a **A2K DIGITAL STUDIO 2026**.\n\nUn asesor te contactará pronto.\n\nVisita nuestro portafolio:\n🌐 a2k-landing-2026.vercel.app\n\n¡Que tengas un excelente día! 🚀🔥',
           buttons: [
@@ -1806,6 +1814,15 @@
           case 'schedule': addMessage('📅 Agendar', true); setTimeout(function() { renderState('schedule', 600); }, 400); break;
           case 'capture_name': addMessage('👤 Hablar con humano', true); setTimeout(function() { renderState('capture_name', 600); }, 400); break;
           case 'skip_phone': addMessage('⏭️ Omitir', true); userData.phone = ''; setTimeout(function() { renderState('capture_message', 600); }, 400); break;
+          case 'faq_ask_again':
+            userData.faq_response = '';
+            addMessage('❓ Otra pregunta', true);
+            setTimeout(function() {
+              addMessage('Escribe tu pregunta sobre nuestros productos o servicios 💬', false, false);
+              showInput(true);
+              state = 'faq_waiting';
+            }, 600);
+            break;
           case 'menu_back': addMessage('🔙 Volver', true); setTimeout(function() { renderState('new_client', 600); }, 400); break;
           case 'farewell': addMessage('✅ Confirmar', true); setTimeout(function() { renderState('farewell', 700); }, 400); break;
           case 'reset': userData = {}; setTimeout(function() { renderState('greeting', 600); }, 400); break;
@@ -1822,11 +1839,60 @@
         var text = input.value.trim();
         if (!text) return;
         var st = states[state];
-        if (!st || !st.input || !st.captureKey) return;
-        addMessage(text, true);
-        input.value = '';
-        userData[st.captureKey] = text;
-        if (st.nextState) setTimeout(function() { renderState(st.nextState, 600); }, 400);
+        var isCapturing = st && st.input && st.captureKey;
+
+        if (isCapturing) {
+          // Modo normal: capturar datos del usuario
+          addMessage(text, true);
+          input.value = '';
+          userData[st.captureKey] = text;
+          if (st.nextState) setTimeout(function() { renderState(st.nextState, 600); }, 400);
+          return;
+        }
+
+        // Modo FAQ: el usuario escribió sin estar en captura
+        if (state === 'faq_waiting' || (!st || !st.input)) {
+          addMessage(text, true);
+          input.value = '';
+          showInput(false);
+
+          // Mostrar typing indicator
+          addMessage('🤔 Consultando a DeepSeek...', false, true);
+
+          // Llamar al API local de DeepSeek
+          var xhr = new XMLHttpRequest();
+          xhr.open('POST', 'http://localhost:5001/webhook/a2k', true);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.timeout = 10000;
+
+          xhr.onload = function() {
+            var respText = '⚠️ No pude procesar tu consulta. Intenta de nuevo.';
+            try {
+              var resp = JSON.parse(xhr.responseText);
+              if (resp.response) respText = resp.response;
+              else if (resp.category) respText = '📌 Categoría: ' + resp.category;
+            } catch(e) {}
+
+            userData.faq_response = respText;
+            setTimeout(function() { renderState('faq_result', 300); }, 200);
+          };
+
+          xhr.onerror = function() {
+            userData.faq_response = '🔌 No pude conectar con el servidor IA. Un asesor te responderá pronto.';
+            setTimeout(function() { renderState('faq_result', 300); }, 200);
+          };
+
+          xhr.ontimeout = function() {
+            userData.faq_response = '⏰ El servidor tardó mucho en responder. Intenta de nuevo.';
+            setTimeout(function() { renderState('faq_result', 300); }, 200);
+          };
+
+          xhr.send(JSON.stringify({
+            event: 'chat_message',
+            message: text,
+            product_name: userData.last_product || ''
+          }));
+        }
       }
 
       toggleBtn.addEventListener('click', toggleChat);
