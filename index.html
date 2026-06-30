@@ -1318,12 +1318,13 @@
       try {
         var resp = JSON.parse(xhr.responseText);
         if (resp.status === 'ok') {
+          var pay = resp.payment;
           result.style.display = 'block';
-          display.textContent = amount + ' USDT';
-          wallet.textContent = 'Orden creada. Transfiere ' + amount + ' USDT a la direccion indicada por Smart Pay.';
+          display.textContent = amount + ' USDT (' + pay.network + ')';
+          wallet.innerHTML = '<strong style="color:#00B4FF;font-size:1.1rem;">' + pay.wallet + '</strong><br><span style="color:#666;font-size:0.8rem;">Red: ' + pay.network + '</span>';
           btn.textContent = '✅ Pago Solicitado';
         } else {
-          wallet.textContent = 'Error: ' + JSON.stringify(resp);
+          wallet.innerHTML = 'Error: ' + JSON.stringify(resp);
           result.style.display = 'block';
           btn.textContent = '💳 Pagar con Smart Pay';
         }
