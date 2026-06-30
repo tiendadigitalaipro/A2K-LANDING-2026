@@ -34,6 +34,8 @@ import urllib.request
 
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 SMART_PAY_WEBHOOK_SECRET = os.environ.get("SMART_PAY_WEBHOOK_SECRET", "whsec_d8709bbf0cd7010ffc9d76925c45babbcf7f61b2083ed5aa98601bcf42655239")
+SMART_PAY_PUBLIC_KEY = "pk_9c96d466a81d6cd9d3b17b6451619fe4"
+SMART_PAY_SECRET_KEY = "sk_b73fc66ce47470eae1aa7f800012df624de6a3b62b0b820e9987c82b3ae4c83f"
 if not DEEPSEEK_API_KEY:
     print("❌ ERROR: Debes definir DEEPSEEK_API_KEY")
     print("   export DEEPSEEK_API_KEY='sk-tu-key-aqui'")
@@ -294,6 +296,25 @@ a{{color:#00B4FF}}</style></head><body>
             return self._json({"status": "ok" if ok else "error", "action": "recordatorio"})
 
         # ─── WHATSAPP DIRECTO ───
+        elif path == "/api/smartpay-checkout":
+            # Crear orden de pago con Smart Pay
+            amount = data.get("amount", data.get("monto", "0"))
+            concept = data.get("concept", data.get("concepto", "Pago A2K Digital Studio"))
+            customer = data.get("customer", data.get("cliente", "Cliente"))
+            log_event("smartpay_checkout", {"amount": amount, "concept": concept})
+            return self._json({
+                "status": "ok",
+                "payment": {
+                    "amount": amount,
+                    "currency": "USDT",
+                    "concept": concept,
+                    "customer": customer,
+                    "public_key": SMART_PAY_PUBLIC_KEY,
+                    "webhook": "https://a2k-api-v4.onrender.com/webhook/smartpay"
+                },
+                "instructions": "Transferir USDT a la direccion que se mostrara en pantalla"
+            })
+
         elif path == "/api/whatsapp":
             phone = data.get("to", data.get("phone", ""))
             msg = data.get("message", "")

@@ -1258,20 +1258,97 @@
        SMART PAY - PAGOS
        ========================================== -->
   <section id="pagos" class="section" style="background:#0A0A0A;">
-    <div class="container" style="text-align:center;">
+    <div class="container">
       <h2 class="section-title reveal">Paga con Smart Pay</h2>
       <div class="glow-line reveal"></div>
       <p class="section-subtitle reveal">
-        Aceptamos pagos en USDT directo desde tu billetera. Rápido, seguro y sin comisiones.
+        Aceptamos pagos en <strong>USDT</strong> directo desde tu billetera. Rápido, seguro y sin comisiones.
       </p>
-      <div class="reveal-scale" style="margin-top:30px;">
-        <a href="#" id="smartPayBtn" style="display:inline-flex;align-items:center;gap:12px;padding:18px 50px;background:linear-gradient(135deg,#00B4FF,#0088CC);color:#fff;border:none;border-radius:50px;font-size:1.1rem;font-weight:600;cursor:pointer;text-decoration:none;box-shadow:0 4px 25px rgba(0,180,255,0.3);transition:all 0.3s ease;">
+      <div class="reveal-scale" style="max-width:500px;margin:0 auto;background:#1A1A1A;border-radius:20px;padding:35px;border:1px solid rgba(0,180,255,0.08);">
+        <div style="margin-bottom:20px;">
+          <label style="display:block;color:#C0C0C0;font-size:0.9rem;margin-bottom:8px;">Selecciona un plan o servicio</label>
+          <select id="payPlan" style="width:100%;padding:14px 18px;background:#121212;border:1px solid rgba(192,192,192,0.1);border-radius:12px;color:#E0E0E0;font-size:1rem;font-family:inherit;">
+            <option value="29">Recepcionista IA - $29/mes</option>
+            <option value="97">Recepcionista IA Premium - $97/mes</option>
+            <option value="147">Recepcionista IA Enterprise - $147/mes</option>
+            <option value="29">A2K Comandas POS - $29/mes</option>
+            <option value="197">Landing Page + Branding - $197</option>
+            <option value="35">Smartwatch Pro - $35</option>
+            <option value="25">Audifonos TWS - $25</option>
+          </select>
+        </div>
+        <div style="margin-bottom:20px;">
+          <label style="display:block;color:#C0C0C0;font-size:0.9rem;margin-bottom:8px;">Monto a pagar (USDT)</label>
+          <input type="number" id="payAmount" value="29" min="1" step="0.01" style="width:100%;padding:14px 18px;background:#121212;border:1px solid rgba(192,192,192,0.1);border-radius:12px;color:#E0E0E0;font-size:1.2rem;font-family:inherit;">
+        </div>
+        <button id="smartPayBtn" onclick="iniciarPago()" style="width:100%;padding:16px;background:linear-gradient(135deg,#00B4FF,#0088CC);color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.3s ease;box-shadow:0 4px 25px rgba(0,180,255,0.3);">
           💳 Pagar con Smart Pay
-        </a>
-        <p style="color:#666;font-size:0.85rem;margin-top:15px;">🔒 Transacciones seguras en blockchain · USDT · Sin datos bancarios</p>
+        </button>
+        <div id="payResult" style="display:none;margin-top:20px;padding:20px;background:#0D1A0D;border:1px solid #00B4FF;border-radius:12px;">
+          <p style="color:#00ff88;font-weight:600;margin-bottom:10px;">✅ Orden creada</p>
+          <p style="color:#C0C0C0;font-size:0.9rem;margin-bottom:10px;">Transfiere <strong id="payAmountDisplay" style="color:#00B4FF;">0 USDT</strong> a:</p>
+          <div style="background:#0A0A0A;padding:15px;border-radius:8px;font-family:monospace;font-size:0.85rem;color:#00B4FF;word-break:break-all;margin-bottom:10px;" id="payWallet">
+            Conectando con Smart Pay...
+          </div>
+          <p style="color:#666;font-size:0.8rem;">🔗 Webhook: a2k-api-v4.onrender.com/webhook/smartpay</p>
+        </div>
+        <p style="color:#666;font-size:0.85rem;margin-top:15px;text-align:center;">🔒 Transacciones seguras en blockchain · USDT · Sin datos bancarios</p>
       </div>
     </div>
   </section>
+
+  <script>
+  function iniciarPago() {
+    var amount = document.getElementById('payAmount').value;
+    var plan = document.getElementById('payPlan').selectedOptions[0].text;
+    var btn = document.getElementById('smartPayBtn');
+    var result = document.getElementById('payResult');
+    var display = document.getElementById('payAmountDisplay');
+    var wallet = document.getElementById('payWallet');
+    
+    btn.textContent = '⏳ Procesando...';
+    btn.disabled = true;
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://a2k-api-v4.onrender.com/api/smartpay-checkout', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.timeout = 15000;
+    
+    xhr.onload = function() {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        if (resp.status === 'ok') {
+          result.style.display = 'block';
+          display.textContent = amount + ' USDT';
+          wallet.textContent = 'Orden creada. Transfiere ' + amount + ' USDT a la direccion indicada por Smart Pay.';
+          btn.textContent = '✅ Pago Solicitado';
+        } else {
+          wallet.textContent = 'Error: ' + JSON.stringify(resp);
+          result.style.display = 'block';
+          btn.textContent = '💳 Pagar con Smart Pay';
+        }
+      } catch(e) {
+        wallet.textContent = 'Error de conexion. Intenta de nuevo.';
+        result.style.display = 'block';
+        btn.textContent = '💳 Pagar con Smart Pay';
+      }
+      btn.disabled = false;
+    };
+    
+    xhr.onerror = function() {
+      wallet.textContent = 'Error de conexion. Verifica que el servidor este activo.';
+      result.style.display = 'block';
+      btn.textContent = '💳 Pagar con Smart Pay';
+      btn.disabled = false;
+    };
+    
+    xhr.send(JSON.stringify({
+      amount: amount,
+      concept: plan,
+      customer: 'Cliente A2K'
+    }));
+  }
+  </script>
 
   <!-- ==========================================
        CONTACTO
