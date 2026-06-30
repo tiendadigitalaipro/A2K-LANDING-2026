@@ -1861,7 +1861,7 @@
 
           // Llamar al API local de DeepSeek
           var xhr = new XMLHttpRequest();
-          xhr.open('POST', 'https://rhode-microphone-stats-boom.trycloudflare.com/webhook/a2k', true);
+          xhr.open('POST', 'http://localhost:5001/webhook/a2k', true);
           xhr.setRequestHeader('Content-Type', 'application/json');
           xhr.timeout = 10000;
 
