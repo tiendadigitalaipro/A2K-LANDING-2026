@@ -1478,16 +1478,25 @@
         entries.forEach(entry => {
           if (entry.isIntersecting) {
             entry.target.classList.add('visible');
-            // Once visible, stop observing
             observer.unobserve(entry.target);
           }
         });
       }, {
-        threshold: 0.15,
-        rootMargin: '0px 0px -50px 0px'
+        threshold: 0.05,
+        rootMargin: '0px 0px 0px 0px'
       });
 
       revealElements.forEach(el => observer.observe(el));
+
+      // Forzar visibilidad inmediata en elementos ya en viewport al cargar
+      setTimeout(function() {
+        revealElements.forEach(function(el) {
+          var rect = el.getBoundingClientRect();
+          if (rect.top < window.innerHeight && rect.bottom > 0) {
+            el.classList.add('visible');
+          }
+        });
+      }, 100);
     })();
 
     /* ==========================================
@@ -1902,7 +1911,8 @@
       console.log('[A2K Chat] 14 states initialized');
     })();
 
-    CONTACT FORM — Simulate submit
+    /* ==========================================
+       CONTACT FORM — Simulate submit
        ========================================== */
     (function initContactForm() {
       const form = document.getElementById('contactForm');
