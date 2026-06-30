@@ -1287,10 +1287,13 @@
         <div id="payResult" style="display:none;margin-top:20px;padding:20px;background:#0D1A0D;border:1px solid #00B4FF;border-radius:12px;">
           <p style="color:#00ff88;font-weight:600;margin-bottom:10px;">✅ Orden creada</p>
           <p style="color:#C0C0C0;font-size:0.9rem;margin-bottom:10px;">Transfiere <strong id="payAmountDisplay" style="color:#00B4FF;">0 USDT</strong> a:</p>
-          <div style="background:#0A0A0A;padding:15px;border-radius:8px;font-family:monospace;font-size:0.85rem;color:#00B4FF;word-break:break-all;margin-bottom:10px;" id="payWallet">
-            Conectando con Smart Pay...
+          <div style="text-align:center;margin:15px 0;">
+            <img src="wallet-qr.png" alt="QR Wallet BSC" style="width:180px;height:180px;border-radius:12px;border:2px solid rgba(0,180,255,0.15);">
           </div>
-          <p style="color:#666;font-size:0.8rem;">🔗 Webhook: a2k-api-v4.onrender.com/webhook/smartpay</p>
+          <div style="background:#0A0A0A;padding:15px;border-radius:8px;font-family:monospace;font-size:0.85rem;color:#00B4FF;word-break:break-all;margin-bottom:10px;text-align:center;cursor:pointer;" id="payWallet" onclick="navigator.clipboard.writeText('0x55a5d29633e64a7734db9f96c305e3883457fc64');this.textContent='✅ Copiado!'">
+            0x55a5d29633e64a7734db9f96c305e3883457fc64
+          </div>
+          <p style="color:#666;font-size:0.8rem;">🔗 Red: BEP-20 (Binance Smart Chain) · Escanea el QR o copia la dirección</p>
         </div>
         <p style="color:#666;font-size:0.85rem;margin-top:15px;text-align:center;">🔒 Transacciones seguras en blockchain · USDT · Sin datos bancarios</p>
       </div>
