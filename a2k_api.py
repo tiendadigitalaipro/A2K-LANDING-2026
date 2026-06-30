@@ -33,6 +33,7 @@ import urllib.request
 # ═══════════════════════════════════════════════
 
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+SMART_PAY_WEBHOOK_SECRET = os.environ.get("SMART_PAY_WEBHOOK_SECRET", "whsec_d8709bbf0cd7010ffc9d76925c45babbcf7f61b2083ed5aa98601bcf42655239")
 if not DEEPSEEK_API_KEY:
     print("❌ ERROR: Debes definir DEEPSEEK_API_KEY")
     print("   export DEEPSEEK_API_KEY='sk-tu-key-aqui'")
@@ -301,12 +302,21 @@ a{{color:#00B4FF}}</style></head><body>
             return self._json({"status": "ok" if ok else "error", "action": "enviado", "to": phone.replace("+", "")})
 
         elif path == "/webhook/smartpay":
+            # Verificar firma
+            signature = self.headers.get("X-SmartPay-Signature", "")
+            if signature and SMART_PAY_WEBHOOK_SECRET:
+                expected = hmac.new(SMART_PAY_WEBHOOK_SECRET.encode(), json.dumps(data).encode(), hashlib.sha256).hexdigest()
+                if signature != expected:
+                    log_event("smartpay_invalid", {"reason": "bad signature"})
+                    return self._json({"error": "invalid signature"}, 401)
             log_event("smartpay", data)
             tx = data.get("transaction", data.get("tx", data.get("id", "?")))
             status = data.get("status", data.get("estado", "completado"))
             amount = data.get("amount", data.get("monto", "?"))
             currency = data.get("currency", data.get("moneda", "USDT"))
             print(f"  💰 Smart Pay: {tx} | {status} | {amount} {currency}")
+            if status in ("completed", "completado", "success", "exitoso"):
+                print(f"  ✅ Pago CONFIRMADO: {amount} {currency}")
             return self._json({"status": "ok", "received": True, "transaction": tx})
 
         else:
