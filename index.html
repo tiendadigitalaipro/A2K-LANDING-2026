@@ -911,17 +911,10 @@
       opacity: 0;
       transform: translateY(40px);
       transition: opacity 0.7s ease, transform 0.7s ease;
-      animation: revealFallback 0.8s ease 0.3s forwards;
-    }
-    @keyframes revealFallback {
-      to { opacity: 1; transform: translateY(0); }
     }
     .reveal.visible {
       opacity: 1;
       transform: translateY(0);
-    }
-    .reveal-scale {
-      animation: revealFallback 0.8s ease 0.4s forwards;
     }
     .reveal-left {
       opacity: 0;
@@ -1097,6 +1090,34 @@
     <div class="hero-scroll-indicator">
       <div class="mouse"></div>
       <span>Scroll</span>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       QUIENES SOMOS
+       ========================================== -->
+  <section id="quienes-somos" class="section" style="background:#0A0A0A;">
+    <div class="container">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center;">
+        <div class="reveal-left">
+          <img src="equipo-a2k.jpg" alt="Equipo A2K Digital Studio" style="width:100%;border-radius:16px;border:1px solid rgba(0,180,255,0.1);box-shadow:0 20px 60px rgba(0,180,255,0.08);">
+        </div>
+        <div class="reveal-right">
+          <h2 style="font-size:2.2rem;font-weight:800;margin-bottom:10px;background:linear-gradient(135deg,#00B4FF,#C0C0C0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Quiénes Somos</h2>
+          <div style="width:60px;height:2px;background:linear-gradient(90deg,transparent,#00B4FF,transparent);margin-bottom:25px;border-radius:1px;"></div>
+          <p style="color:#C0C0C0;line-height:1.8;font-size:1.05rem;margin-bottom:20px;">
+            En <strong style="color:#00B4FF;">A2K Digital Studio</strong> somos un equipo apasionado por la tecnología y la innovación. Nacimos en Ocumare del Tuy, Venezuela, con la misión de democratizar el acceso a soluciones digitales profesionales para negocios de todos los tamaños.
+          </p>
+          <p style="color:#999;line-height:1.8;font-size:0.95rem;margin-bottom:20px;">
+            Combinamos automatización con inteligencia artificial, diseño de alto impacto y comercio electrónico para crear ecosistemas digitales que impulsan ventas, optimizan procesos y transforman marcas.
+          </p>
+          <div style="display:flex;gap:30px;margin-top:25px;">
+            <div><span style="font-size:2rem;font-weight:800;color:#00B4FF;">+50</span><p style="color:#666;font-size:0.85rem;margin:0;">Proyectos realizados</p></div>
+            <div><span style="font-size:2rem;font-weight:800;color:#00B4FF;">+30</span><p style="color:#666;font-size:0.85rem;margin:0;">Clientes satisfechos</p></div>
+            <div><span style="font-size:2rem;font-weight:800;color:#00B4FF;">24/7</span><p style="color:#666;font-size:0.85rem;margin:0;">Soporte activo</p></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1485,25 +1506,16 @@
         entries.forEach(entry => {
           if (entry.isIntersecting) {
             entry.target.classList.add('visible');
+            // Once visible, stop observing
             observer.unobserve(entry.target);
           }
         });
       }, {
-        threshold: 0.05,
-        rootMargin: '0px 0px 0px 0px'
+        threshold: 0.15,
+        rootMargin: '0px 0px -50px 0px'
       });
 
       revealElements.forEach(el => observer.observe(el));
-
-      // Forzar visibilidad inmediata en elementos ya en viewport al cargar
-      setTimeout(function() {
-        revealElements.forEach(function(el) {
-          var rect = el.getBoundingClientRect();
-          if (rect.top < window.innerHeight && rect.bottom > 0) {
-            el.classList.add('visible');
-          }
-        });
-      }, 100);
     })();
 
     /* ==========================================
@@ -1918,8 +1930,7 @@
       console.log('[A2K Chat] 14 states initialized');
     })();
 
-    /* ==========================================
-       CONTACT FORM — Simulate submit
+    CONTACT FORM — Simulate submit
        ========================================== */
     (function initContactForm() {
       const form = document.getElementById('contactForm');
